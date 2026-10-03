@@ -12,6 +12,24 @@
     fire: "#d6623b",
     player: "#f6e27d",
   };
+  const DIRECTIONS = {
+    ArrowUp: { x: 0, y: -1 },
+    KeyW: { x: 0, y: -1 },
+    ArrowDown: { x: 0, y: 1 },
+    KeyS: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 },
+    KeyA: { x: -1, y: 0 },
+    ArrowRight: { x: 1, y: 0 },
+    KeyD: { x: 1, y: 0 },
+  };
+  const TOUCH_DIRECTIONS = {
+    up: { x: 0, y: -1 },
+    down: { x: 0, y: 1 },
+    left: { x: -1, y: 0 },
+    right: { x: 1, y: 0 },
+  };
+  const KEY_TILES = { r: "red", u: "blue", y: "yellow", g: "green" };
+  const DOOR_TILES = { R: "red", B: "blue", Y: "yellow", G: "green" };
 
   const RAW_LEVELS = [
     {
@@ -48,7 +66,7 @@
       title: "Boot Bridge",
       map: [
         "##########",
-        "#P.b.W.X.#",
+        "#P.w.W.X.#",
         "#...F....#",
         "#........#",
         "##########",
@@ -57,11 +75,11 @@
     {
       title: "Final Circuit",
       map: [
-        "############",
-        "#P.C.r.R.SX#",
-        "#..b.W.....#",
-        "#..f.F.....#",
-        "############",
+        "##############",
+        "#P.C.r.R.u.BX#",
+        "#..w.W..y.Y..#",
+        "#..f.F..g.GS.#",
+        "##############",
       ],
     },
   ];
@@ -79,6 +97,9 @@
     mode: "ready",
     message: "Collect the chips, open the socket, and reach the exit.",
     muted: false,
+    cells: [],
+    bufferedMove: null,
+    audio: null,
   };
 
   const canvas = document.querySelector("#game-canvas");
@@ -94,6 +115,7 @@
     reset: document.querySelector("#reset-button"),
     resetProgress: document.querySelector("#reset-progress-button"),
     mute: document.querySelector("#mute-button"),
+    debug: document.querySelector("#debug-state"),
   };
 
   function parseLevel(raw, index) {
@@ -124,12 +146,14 @@
     const level = game.levels[index];
     game.currentLevel = index;
     game.player = { ...level.player };
+    game.cells = level.cells.map((row) => [...row]);
     game.chipsCollected = 0;
     game.chipsRequired = level.chipsRequired;
     game.keys = { red: 0, blue: 0, yellow: 0, green: 0 };
     game.boots = { water: false, fire: false };
     game.moves = 0;
     game.mode = "ready";
+    game.bufferedMove = null;
     game.message = "Collect the chips, open the socket, and reach the exit.";
     render();
   }
@@ -142,7 +166,7 @@
 
     for (let y = 0; y < level.height; y += 1) {
       for (let x = 0; x < level.width; x += 1) {
-        drawCell(x, y, cellAt(level, x, y));
+        drawCell(x, y, cellAt(x, y));
       }
     }
 
@@ -150,8 +174,8 @@
     syncHud();
   }
 
-  function cellAt(level, x, y) {
-    return level.cells[y]?.[x] || "#";
+  function cellAt(x, y) {
+    return game.cells[y]?.[x] || "#";
   }
 
   function drawCell(x, y, code) {
@@ -172,9 +196,9 @@
     if (code === "X") drawSquare(px, py, COLORS.exit, "X");
     if (code === "W") drawSquare(px, py, COLORS.water, "W");
     if (code === "F") drawSquare(px, py, COLORS.fire, "F");
-    if ("rbyg".includes(code)) drawCircle(px, py, keyColor(code), code.toUpperCase());
-    if ("RBYG".includes(code)) drawDoor(px, py, keyColor(code.toLowerCase()), code);
-    if (code === "b") drawCircle(px, py, COLORS.water, "B");
+    if (KEY_TILES[code]) drawCircle(px, py, keyColor(KEY_TILES[code]), keyLabel(KEY_TILES[code]));
+    if (DOOR_TILES[code]) drawDoor(px, py, keyColor(DOOR_TILES[code]), code);
+    if (code === "w") drawCircle(px, py, COLORS.water, "B");
     if (code === "f") drawCircle(px, py, COLORS.fire, "B");
   }
 
@@ -219,8 +243,162 @@
     drawLabel(px, py, "P", "#15170c");
   }
 
-  function keyColor(code) {
-    return { r: "#e95d5d", b: "#5c93f0", y: "#ead45c", g: "#71d26f" }[code];
+  function keyColor(color) {
+    return {
+      red: "#e95d5d",
+      blue: "#5c93f0",
+      yellow: "#ead45c",
+      green: "#71d26f",
+    }[color];
+  }
+
+  function keyLabel(color) {
+    return { red: "R", blue: "B", yellow: "Y", green: "G" }[color];
+  }
+
+  function requestMove(direction) {
+    if (game.mode === "complete") {
+      advanceLevel();
+      return;
+    }
+    if (game.mode === "failed") {
+      startLevel(game.currentLevel);
+      return;
+    }
+    if (game.mode !== "ready") {
+      game.bufferedMove = direction;
+      return;
+    }
+    applyMove(direction);
+  }
+
+  function applyMove(direction) {
+    const target = {
+      x: game.player.x + direction.x,
+      y: game.player.y + direction.y,
+    };
+    const tile = cellAt(target.x, target.y);
+    game.moves += 1;
+
+    if (!canEnter(tile)) {
+      game.message = blockedMessage(tile);
+      playSound("blocked");
+      render();
+      return;
+    }
+
+    game.player = target;
+    resolveTile(tile, target);
+    render();
+  }
+
+  function canEnter(tile) {
+    if (tile === "#") return false;
+    if (tile === "S" && game.chipsCollected < game.chipsRequired) return false;
+    if (DOOR_TILES[tile]) return game.keys[DOOR_TILES[tile]] > 0;
+    return true;
+  }
+
+  function blockedMessage(tile) {
+    if (tile === "S") return `The chip socket needs ${game.chipsRequired - game.chipsCollected} more chip${game.chipsRequired - game.chipsCollected === 1 ? "" : "s"}.`;
+    if (DOOR_TILES[tile]) return `That ${DOOR_TILES[tile]} door needs a matching key.`;
+    return "Blocked.";
+  }
+
+  function resolveTile(tile, target) {
+    if (tile === "C") {
+      game.chipsCollected += 1;
+      clearCell(target);
+      game.message = "Chip collected.";
+      playSound("collect");
+    } else if (KEY_TILES[tile]) {
+      const color = KEY_TILES[tile];
+      game.keys[color] += 1;
+      clearCell(target);
+      game.message = `${capitalize(color)} key collected.`;
+      playSound("collect");
+    } else if (DOOR_TILES[tile]) {
+      const color = DOOR_TILES[tile];
+      game.keys[color] -= 1;
+      clearCell(target);
+      game.message = `${capitalize(color)} door opened.`;
+      playSound("unlock");
+    } else if (tile === "w") {
+      game.boots.water = true;
+      clearCell(target);
+      game.message = "Water boots collected.";
+      playSound("collect");
+    } else if (tile === "f") {
+      game.boots.fire = true;
+      clearCell(target);
+      game.message = "Fire boots collected.";
+      playSound("collect");
+    } else if (tile === "W" && !game.boots.water) {
+      fail("Water shorted the circuit.");
+    } else if (tile === "F" && !game.boots.fire) {
+      fail("Fire melted the circuit.");
+    } else if (tile === "X") {
+      completeLevel();
+    } else {
+      game.message = "Keep routing the circuit.";
+    }
+  }
+
+  function clearCell(point) {
+    game.cells[point.y][point.x] = ".";
+  }
+
+  function fail(message) {
+    game.mode = "failed";
+    game.message = `${message} Press any move or Reset to retry.`;
+    playSound("death");
+  }
+
+  function completeLevel() {
+    game.mode = "complete";
+    game.message = "Level complete. Press any move or click to continue.";
+    game.unlockedLevel = Math.max(game.unlockedLevel, Math.min(game.currentLevel + 1, game.levels.length - 1));
+    localStorage.setItem("circuitFetchUnlocked", String(game.unlockedLevel));
+    playSound("win");
+  }
+
+  function advanceLevel() {
+    if (game.currentLevel < game.levels.length - 1) {
+      startLevel(game.currentLevel + 1);
+    } else {
+      game.message = "Circuit Fetch complete. Reset progress to replay from the start.";
+      render();
+    }
+  }
+
+  function capitalize(value) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function playSound(kind) {
+    if (game.muted) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!game.audio) game.audio = new AudioContext();
+    const ctxAudio = game.audio;
+    const now = ctxAudio.currentTime;
+    const osc = ctxAudio.createOscillator();
+    const gain = ctxAudio.createGain();
+    const tones = {
+      collect: [660, 0.07],
+      unlock: [440, 0.09],
+      blocked: [180, 0.05],
+      death: [110, 0.16],
+      win: [880, 0.14],
+    };
+    const [frequency, duration] = tones[kind] || tones.collect;
+    osc.frequency.setValueAtTime(frequency, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.07, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(gain).connect(ctxAudio.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.01);
   }
 
   function syncHud() {
@@ -234,6 +412,7 @@
     renderLevelList();
     els.mute.textContent = game.muted ? "Muted" : "Sound";
     els.mute.setAttribute("aria-pressed", String(game.muted));
+    els.debug.textContent = JSON.stringify(debugSnapshot());
   }
 
   function formatCounts(counts) {
@@ -271,8 +450,28 @@
     game.muted = !game.muted;
     syncHud();
   });
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "KeyR") {
+      startLevel(game.currentLevel);
+      return;
+    }
+    const direction = DIRECTIONS[event.code];
+    if (!direction) return;
+    event.preventDefault();
+    requestMove(direction);
+  });
+  document.addEventListener("click", () => {
+    if (game.mode === "complete") advanceLevel();
+  });
+  document.querySelectorAll("[data-dir]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      requestMove(TOUCH_DIRECTIONS[button.dataset.dir]);
+    });
+  });
 
-  window.__circuitFetchDebug = () => ({
+  function debugSnapshot() {
+    return {
     level: game.currentLevel,
     title: game.levels[game.currentLevel].title,
     player: { ...game.player },
@@ -282,7 +481,12 @@
     moves: game.moves,
     mode: game.mode,
     unlockedLevel: game.unlockedLevel,
-  });
+    bufferedMove: game.bufferedMove,
+    message: game.message,
+    };
+  }
+
+  window.__circuitFetchDebug = debugSnapshot;
 
   loadProgress();
   startLevel(0);
