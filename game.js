@@ -28,6 +28,8 @@
     left: { x: -1, y: 0 },
     right: { x: 1, y: 0 },
   };
+  const REPEAT_INITIAL_MS = 190;
+  const REPEAT_MS = 125;
   const KEY_TILES = { r: "red", u: "blue", y: "yellow", g: "green" };
   const DOOR_TILES = { R: "red", B: "blue", Y: "yellow", G: "green" };
 
@@ -100,6 +102,9 @@
     cells: [],
     bufferedMove: null,
     audio: null,
+    heldMove: null,
+    repeatStartTimer: null,
+    repeatTimer: null,
   };
 
   const canvas = document.querySelector("#game-canvas");
@@ -427,7 +432,8 @@
     game.levels.forEach((level, index) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = `${index + 1}. ${level.title}`;
+      const state = index <= game.unlockedLevel ? "Unlocked" : "Locked";
+      button.textContent = `${index + 1}. ${level.title} - ${state}`;
       button.disabled = index > game.unlockedLevel;
       button.className = index === game.currentLevel ? "active" : "";
       button.addEventListener("click", () => startLevel(index));
@@ -458,7 +464,12 @@
     const direction = DIRECTIONS[event.code];
     if (!direction) return;
     event.preventDefault();
+    if (event.repeat) return;
     requestMove(direction);
+    startRepeat(direction);
+  });
+  document.addEventListener("keyup", (event) => {
+    if (DIRECTIONS[event.code]) stopRepeat();
   });
   document.addEventListener("click", () => {
     if (game.mode === "complete") advanceLevel();
@@ -466,9 +477,43 @@
   document.querySelectorAll("[data-dir]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (button.dataset.skipClick === "true") {
+        delete button.dataset.skipClick;
+        return;
+      }
       requestMove(TOUCH_DIRECTIONS[button.dataset.dir]);
     });
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const direction = TOUCH_DIRECTIONS[button.dataset.dir];
+      requestMove(direction);
+      startRepeat(direction);
+      button.setPointerCapture(event.pointerId);
+    });
+    button.addEventListener("pointerup", () => {
+      button.dataset.skipClick = "true";
+      stopRepeat();
+    });
+    button.addEventListener("pointercancel", stopRepeat);
+    button.addEventListener("pointerleave", stopRepeat);
   });
+
+  function startRepeat(direction) {
+    stopRepeat();
+    game.heldMove = direction;
+    game.repeatStartTimer = window.setTimeout(() => {
+      game.repeatTimer = window.setInterval(() => requestMove(direction), REPEAT_MS);
+    }, REPEAT_INITIAL_MS);
+  }
+
+  function stopRepeat() {
+    game.heldMove = null;
+    if (game.repeatStartTimer) window.clearTimeout(game.repeatStartTimer);
+    if (game.repeatTimer) window.clearInterval(game.repeatTimer);
+    game.repeatStartTimer = null;
+    game.repeatTimer = null;
+  }
 
   function debugSnapshot() {
     return {
@@ -482,6 +527,7 @@
     mode: game.mode,
     unlockedLevel: game.unlockedLevel,
     bufferedMove: game.bufferedMove,
+    heldMove: game.heldMove,
     message: game.message,
     };
   }
