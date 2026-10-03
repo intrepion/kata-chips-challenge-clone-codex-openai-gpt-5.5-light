@@ -44,6 +44,10 @@ _Avoid_: Goal, portal
 A collectible that permits opening a matching colored door.
 _Avoid_: Unlock, pass
 
+**Inventory**:
+The player's current collection of keys and boots within a level.
+_Avoid_: Backpack, items
+
 **Door**:
 A colored gate that consumes or requires its matching key when opened.
 _Avoid_: Lock, barrier
@@ -64,6 +68,10 @@ _Avoid_: Stage, room, map
 An ordered set of levels played by the same game rules.
 _Avoid_: Campaign, world
 
+**Failure State**:
+The short stopped state after defeat that preserves the cause before the level resets.
+_Avoid_: Death screen, game over
+
 **Tick**:
 One deterministic simulation step used to resolve movement and future timed actor behavior.
 _Avoid_: Frame, turn
@@ -71,3 +79,7 @@ _Avoid_: Frame, turn
 **Reset**:
 Returning the current level to its initial state after defeat or user request.
 _Avoid_: Restart, respawn
+
+**Level Timer**:
+An optional countdown constraint for a level.
+_Avoid_: Clock, time limit
