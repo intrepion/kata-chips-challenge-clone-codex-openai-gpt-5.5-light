@@ -52,6 +52,14 @@ _Avoid_: Backpack, items
 A colored gate that consumes or requires its matching key when opened.
 _Avoid_: Lock, barrier
 
+**Invalid Move**:
+A requested move that cannot place the player in the target cell.
+_Avoid_: Blocked input, failed movement
+
+**Buffered Move**:
+One pending movement request remembered while another movement is resolving.
+_Avoid_: Queue, combo
+
 **Hazard**:
 A tile that defeats the player unless the player has the corresponding protection.
 _Avoid_: Trap, obstacle
@@ -68,6 +76,10 @@ _Avoid_: Stage, room, map
 An ordered set of levels played by the same game rules.
 _Avoid_: Campaign, world
 
+**Completion State**:
+The short stopped state after satisfying a level's win condition and before advancing.
+_Avoid_: Victory screen, win modal
+
 **Failure State**:
 The short stopped state after defeat that preserves the cause before the level resets.
 _Avoid_: Death screen, game over
@@ -83,3 +95,7 @@ _Avoid_: Restart, respawn
 **Level Timer**:
 An optional countdown constraint for a level.
 _Avoid_: Clock, time limit
+
+**Unlocked Level**:
+A level that the player may start because prior progression has made it available.
+_Avoid_: Available stage, open map
