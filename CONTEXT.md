@@ -4,6 +4,10 @@ This context names the puzzle-game concepts for a small, faithful Chips Challeng
 
 ## Language
 
+**Circuit Fetch**:
+The original in-game title for this Chips Challenge-style clone.
+_Avoid_: Chips Challenge, Chip's Challenge
+
 **Clone Target**:
 A faithful rules-first top-down tile puzzle inspired by Chips Challenge, delivered first as a compact playable MVP.
 _Avoid_: Themed approximation, arcade remake
@@ -99,3 +103,11 @@ _Avoid_: Clock, time limit
 **Unlocked Level**:
 A level that the player may start because prior progression has made it available.
 _Avoid_: Available stage, open map
+
+**Level Select**:
+The interface for starting any unlocked level.
+_Avoid_: Stage menu, map select
+
+**Debug Snapshot**:
+A small deterministic browser-test view of the current game state.
+_Avoid_: Test API, cheat state
