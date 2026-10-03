@@ -1,0 +1,28 @@
+{
+  "name": "kata-chips-challenge-clone-codex-openai-gpt-5.5-light",
+  "version": "1.0.0",
+  "description": "Circuit Fetch is a small, static, Canvas-based Chips Challenge-style puzzle game.",
+  "main": "game.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "check": "node --check game.js && playwright test",
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/intrepion/kata-chips-challenge-clone-codex-openai-gpt-5.5-light.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/intrepion/kata-chips-challenge-clone-codex-openai-gpt-5.5-light/issues"
+  },
+  "homepage": "https://github.com/intrepion/kata-chips-challenge-clone-codex-openai-gpt-5.5-light#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

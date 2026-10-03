@@ -26,5 +26,6 @@ The game is dependency-free. Use these checks before shipping changes:
 
 ```sh
 node --check game.js
+npm test
 git diff --check
 ```
