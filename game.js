@@ -30,6 +30,9 @@
   };
   const REPEAT_INITIAL_MS = 190;
   const REPEAT_MS = 125;
+  const MOVE_RESOLVE_MS = 90;
+  const STATE_PAUSE_MS = 900;
+  // Level glyphs: r/u/y/g are red/blue/yellow/green keys; R/B/Y/G are matching doors.
   const KEY_TILES = { r: "red", u: "blue", y: "yellow", g: "green" };
   const DOOR_TILES = { R: "red", B: "blue", Y: "yellow", G: "green" };
 
@@ -105,6 +108,7 @@
     heldMove: null,
     repeatStartTimer: null,
     repeatTimer: null,
+    stateTimer: null,
   };
 
   const canvas = document.querySelector("#game-canvas");
@@ -159,6 +163,8 @@
     game.moves = 0;
     game.mode = "ready";
     game.bufferedMove = null;
+    clearStateTimer();
+    stopRepeat();
     game.message = "Collect the chips, open the socket, and reach the exit.";
     render();
   }
@@ -270,14 +276,16 @@
       startLevel(game.currentLevel);
       return;
     }
-    if (game.mode !== "ready") {
+    if (game.mode === "resolving") {
       game.bufferedMove = direction;
       return;
     }
+    if (game.mode !== "ready") return;
     applyMove(direction);
   }
 
   function applyMove(direction) {
+    game.mode = "resolving";
     const target = {
       x: game.player.x + direction.x,
       y: game.player.y + direction.y,
@@ -289,23 +297,41 @@
       game.message = blockedMessage(tile);
       playSound("blocked");
       render();
+      settleMove();
       return;
     }
 
     game.player = target;
     resolveTile(tile, target);
     render();
+    settleMove();
+  }
+
+  function settleMove() {
+    window.setTimeout(() => {
+      if (game.mode !== "resolving") return;
+      game.mode = "ready";
+      const buffered = game.bufferedMove;
+      game.bufferedMove = null;
+      if (buffered) {
+        applyMove(buffered);
+      } else {
+        render();
+      }
+    }, MOVE_RESOLVE_MS);
   }
 
   function canEnter(tile) {
     if (tile === "#") return false;
     if (tile === "S" && game.chipsCollected < game.chipsRequired) return false;
+    if (tile === "X" && game.chipsCollected < game.chipsRequired) return false;
     if (DOOR_TILES[tile]) return game.keys[DOOR_TILES[tile]] > 0;
     return true;
   }
 
   function blockedMessage(tile) {
     if (tile === "S") return `The chip socket needs ${game.chipsRequired - game.chipsCollected} more chip${game.chipsRequired - game.chipsCollected === 1 ? "" : "s"}.`;
+    if (tile === "X") return `The exit needs ${game.chipsRequired - game.chipsCollected} more chip${game.chipsRequired - game.chipsCollected === 1 ? "" : "s"}.`;
     if (DOOR_TILES[tile]) return `That ${DOOR_TILES[tile]} door needs a matching key.`;
     return "Blocked.";
   }
@@ -355,19 +381,24 @@
 
   function fail(message) {
     game.mode = "failed";
-    game.message = `${message} Press any move or Reset to retry.`;
+    game.message = `${message} Resetting...`;
     playSound("death");
+    clearStateTimer();
+    game.stateTimer = window.setTimeout(() => startLevel(game.currentLevel), STATE_PAUSE_MS);
   }
 
   function completeLevel() {
     game.mode = "complete";
-    game.message = "Level complete. Press any move or click to continue.";
+    game.message = "Level complete. Advancing...";
     game.unlockedLevel = Math.max(game.unlockedLevel, Math.min(game.currentLevel + 1, game.levels.length - 1));
     localStorage.setItem("circuitFetchUnlocked", String(game.unlockedLevel));
     playSound("win");
+    clearStateTimer();
+    game.stateTimer = window.setTimeout(advanceLevel, STATE_PAUSE_MS);
   }
 
   function advanceLevel() {
+    clearStateTimer();
     if (game.currentLevel < game.levels.length - 1) {
       startLevel(game.currentLevel + 1);
     } else {
@@ -513,6 +544,11 @@
     if (game.repeatTimer) window.clearInterval(game.repeatTimer);
     game.repeatStartTimer = null;
     game.repeatTimer = null;
+  }
+
+  function clearStateTimer() {
+    if (game.stateTimer) window.clearTimeout(game.stateTimer);
+    game.stateTimer = null;
   }
 
   function debugSnapshot() {

@@ -6,9 +6,17 @@ async function snapshot(page) {
   return JSON.parse(await page.locator("#debug-state").textContent());
 }
 
+async function waitUntilSettled(page) {
+  await page.waitForFunction(() => {
+    const text = document.querySelector("#debug-state")?.textContent || "{}";
+    return JSON.parse(text).mode !== "resolving";
+  });
+}
+
 async function move(page, key, times = 1) {
   for (let index = 0; index < times; index += 1) {
     await page.keyboard.press(key);
+    await waitUntilSettled(page);
   }
 }
 
@@ -23,6 +31,12 @@ test("plays through collection, socket, door, hazard, boots, and level select", 
   await page.getByRole("button", { name: "Reset progress" }).click();
   await page.locator("#game-canvas").click();
 
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await waitUntilSettled(page);
+  expect(await snapshot(page)).toMatchObject({ level: 0, player: { x: 3, y: 1 } });
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+
   await move(page, "ArrowRight", 3);
   expect(await snapshot(page)).toMatchObject({
     level: 0,
@@ -31,20 +45,16 @@ test("plays through collection, socket, door, hazard, boots, and level select", 
   });
 
   await move(page, "ArrowRight", 4);
-  expect(await snapshot(page)).toMatchObject({ level: 0, mode: "complete", unlockedLevel: 1 });
-
-  await move(page, "ArrowRight");
+  await expect.poll(async () => (await snapshot(page)).level).toBe(1);
   await move(page, "ArrowRight", 6);
-  expect(await snapshot(page)).toMatchObject({ level: 1, mode: "complete", unlockedLevel: 2 });
+  await expect.poll(async () => (await snapshot(page)).level).toBe(2);
 
-  await move(page, "ArrowRight");
   await move(page, "ArrowRight", 2);
   expect(await snapshot(page)).toMatchObject({ level: 2, keys: { red: 1 } });
   await move(page, "ArrowRight", 2);
   expect(await snapshot(page)).toMatchObject({ level: 2, keys: { red: 0 } });
   await move(page, "ArrowRight", 2);
-  expect(await snapshot(page)).toMatchObject({ level: 2, mode: "complete", unlockedLevel: 3 });
-  await move(page, "ArrowRight");
+  await expect.poll(async () => (await snapshot(page)).level).toBe(3);
 
   await page.getByRole("button", { name: /4\. Boot Bridge/ }).click();
   await page.locator("#game-canvas").click();
@@ -52,7 +62,7 @@ test("plays through collection, socket, door, hazard, boots, and level select", 
   await move(page, "ArrowRight", 3);
   expect(await snapshot(page)).toMatchObject({ level: 3, mode: "failed" });
 
-  await move(page, "ArrowRight");
+  await expect.poll(async () => (await snapshot(page)).mode).toBe("ready");
   await move(page, "ArrowRight", 2);
   expect(await snapshot(page)).toMatchObject({ level: 3, boots: { water: true } });
   await move(page, "ArrowRight", 2);
