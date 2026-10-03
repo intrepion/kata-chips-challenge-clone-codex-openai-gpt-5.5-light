@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Circuit Fetch</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="play">
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">Circuit Fetch</p>
+            <h1 id="level-title">Loading</h1>
+          </div>
+          <div class="actions">
+            <button id="mute-button" type="button" aria-pressed="false" title="Mute">Sound</button>
+            <button id="reset-button" type="button">Reset</button>
+          </div>
+        </div>
+        <canvas id="game-canvas" width="704" height="704" aria-label="Circuit Fetch board"></canvas>
+        <p id="status-line" class="status">Collect the chips, open the socket, and reach the exit.</p>
+        <div class="touch-pad" aria-label="Directional controls">
+          <button type="button" data-dir="up" aria-label="Move up">Up</button>
+          <button type="button" data-dir="left" aria-label="Move left">Left</button>
+          <button type="button" data-dir="down" aria-label="Move down">Down</button>
+          <button type="button" data-dir="right" aria-label="Move right">Right</button>
+        </div>
+      </section>
+      <aside class="panel">
+        <h2>Levels</h2>
+        <div id="level-list" class="level-list"></div>
+        <dl class="hud">
+          <div><dt>Chips</dt><dd id="chips-count">0 / 0</dd></div>
+          <div><dt>Keys</dt><dd id="keys-count">None</dd></div>
+          <div><dt>Boots</dt><dd id="boots-count">None</dd></div>
+          <div><dt>Moves</dt><dd id="moves-count">0</dd></div>
+        </dl>
+        <button id="reset-progress-button" type="button" class="secondary">Reset progress</button>
+      </aside>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
