@@ -1,5 +1,9 @@
 # Circuit Fetch
 
+## Play online
+
+[Play Circuit Fetch](https://intrepion.github.io/kata-chips-challenge-clone-codex-openai-gpt-5.5-light/) — free, playable in your browser.
+
 Circuit Fetch is a small, static, Canvas-based Chips Challenge-style puzzle game.
 
 ## Play
