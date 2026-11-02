@@ -33,3 +33,7 @@ node --check game.js
 npm test
 git diff --check
 ```
+
+## Arcade metadata
+
+See [docs/arcade-metadata.md](docs/arcade-metadata.md) for the game-owned manifest and screenshot provenance.
