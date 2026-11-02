@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "workflowCommit": "7b1e51c132ac237bd8095ac7ca44bf3058c4ebf3",
+  "sourceCommit": "fa3e85b3ac0a30164aa8c74afe50aeed04ac8fd0",
+  "runId": "41394759564",
+  "url": "http://127.0.0.1:4200/",
+  "inputs": {
+    "index.html": "7d66bc2c0d68dab9ac8afcd7174ec4b42b52fc542f51eca7c195acaba4d7a50f",
+    "styles.css": "6507c29e325c8df2a2fd3675bbc4729721f620c7c295dbf7e23d230f691df001",
+    "game.js": "b49688945b783e662309b0ccc8d57a2ac4829215e6f0d943dbdedde8d298f35a"
+  },
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 1280,
+    "height": 1000
+  },
+  "screenshots": [
+    "circuit-01.png",
+    "circuit-02.png"
+  ]
+}
